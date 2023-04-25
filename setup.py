@@ -23,7 +23,7 @@ REQUIREMENTS: dict = {
 }
 
 setup(
-    name='',
+    name='qt-tour',
     version='0.1.0',
 
     author='Zsolt Kovari',

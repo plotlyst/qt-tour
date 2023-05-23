@@ -1,5 +1,5 @@
 import threading
-from typing import Optional, List
+from typing import Optional, List, Union
 
 import qtanim
 from qthandy import vbox, pointy
@@ -15,21 +15,23 @@ def global_pos(widget: QWidget) -> QPoint:
 class CoachmarkWidget(QWidget):
     clicked = Signal()
 
-    def __init__(self, parent=None):
+    def __init__(self, parent=None, color: str = 'darkBlue'):
         super(CoachmarkWidget, self).__init__(parent)
         self.setWindowFlags(Qt.WindowType.Popup | Qt.WindowType.FramelessWindowHint)
         self.setAttribute(Qt.WidgetAttribute.WA_TranslucentBackground)
 
+        self._color = color
+
         pointy(self)
         vbox(self)
         self._frame = QFrame()
-        self.setStyleSheet('''
-        QFrame {
+        self.setStyleSheet(f'''
+        QFrame {{
                 padding-left: 2px;
                 padding-right: 2px;
-                border: 2px solid darkBlue;
+                border: 3px dashed {self._color};
                 border-radius: 5px;
-            }
+            }}
         ''')
         self.layout().addWidget(self._frame)
         self._anim = None
@@ -44,7 +46,7 @@ class CoachmarkWidget(QWidget):
 
     def show(self) -> None:
         super(CoachmarkWidget, self).show()
-        self._anim = qtanim.glow(self._frame, loop=-1, duration=600, radius=15, color=QColor('darkBlue'))
+        self._anim = qtanim.glow(self._frame, loop=-1, duration=600, radius=20, color=QColor(self._color).darker())
 
     def hideEvent(self, event: QHideEvent) -> None:
         if self._anim:
@@ -67,6 +69,8 @@ class DisabledClickEventFilter(QObject):
 
     def eventFilter(self, watched: QObject, event: QEvent) -> bool:
         if isinstance(event, QMouseEvent) and event.type() == QEvent.Type.MouseButtonPress:
+            if self._widget is None or self._mark is None:
+                return True
             if self._mark.underMouse():
                 return False
             elif self._widget.underMouse():
@@ -120,8 +124,11 @@ class TourManager(QObject):
 
     def __init__(self):
         super(TourManager, self).__init__()
+        self._coachColor: str = 'darkBlue'
         self._disabledEventFilter = DisabledClickEventFilter()
         self._stepIndex: int = 0
+        self._started: bool = False
+        self._finishNext: bool = False
         self._sequence: Optional[TourSequence] = None
         self._mark: Optional[CoachmarkWidget] = None
         self._currentStep: Optional[TourStep] = None
@@ -134,27 +141,31 @@ class TourManager(QObject):
                     cls.__instance = TourManager()
         return cls.__instance
 
-    @classmethod
-    def singleStep(cls, step: TourStep):
-        tour = TourManager.instance()
-        sequence = TourSequence()
-        sequence.addStep(step)
-        tour.run(sequence)
+    def setCoachColor(self, color: Union[str, QColor, Qt.GlobalColor]):
+        if isinstance(color, QColor):
+            color = color.name()
+        self._coachColor = color
 
-    def run(self, sequence: TourSequence):
+    def start(self):
+        self._started = True
+        QApplication.instance().installEventFilter(self._disabledEventFilter)
+        self.tourStarted.emit()
+
+    def run(self, sequence: TourSequence, finishTour: bool = True):
+        if not self._started:
+            self.start()
+        self._finishNext = finishTour
         self._sequence = sequence
         if not sequence.steps():
             return
         self._stepIndex = 0
-        QApplication.instance().installEventFilter(self._disabledEventFilter)
-        self.tourStarted.emit()
 
         self._activate(self._sequence.steps()[self._stepIndex])
 
     def finish(self):
-        print('finish')
         QApplication.instance().removeEventFilter(self._disabledEventFilter)
         self._mark = None
+        self._started = False
         self.tourFinished.emit()
 
     def _activate(self, step: TourStep):
@@ -162,8 +173,8 @@ class TourManager(QObject):
         self._disabledEventFilter.setWidget(step.widget())
 
         pos = global_pos(step.widget())
-        self._mark = CoachmarkWidget(step.widget())
-        padding = 5
+        self._mark = CoachmarkWidget(step.widget(), color=self._coachColor)
+        padding = 10
         self._mark.setGeometry(pos.x() - padding, pos.y() - padding, step.widget().width() + padding * 2,
                                step.widget().height() + padding * 2)
 
@@ -179,7 +190,7 @@ class TourManager(QObject):
         self._currentStep.finished.emit()
 
         self._stepIndex += 1
-        if self._stepIndex >= len(self._sequence.steps()):
+        if self._finishNext and self._stepIndex >= len(self._sequence.steps()):
             self.finish()
         else:
             self._activate(self._sequence.steps()[self._stepIndex])

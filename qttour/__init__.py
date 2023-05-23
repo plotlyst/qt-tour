@@ -29,8 +29,8 @@ class CoachmarkWidget(QWidget):
         QFrame {{
                 padding-left: 2px;
                 padding-right: 2px;
-                border: 3px dashed {self._color};
-                border-radius: 5px;
+                border: 4px dashed {self._color};
+                border-radius: 12px;
             }}
         ''')
         self.layout().addWidget(self._frame)
@@ -46,7 +46,7 @@ class CoachmarkWidget(QWidget):
 
     def show(self) -> None:
         super(CoachmarkWidget, self).show()
-        self._anim = qtanim.glow(self._frame, loop=-1, duration=600, radius=20, color=QColor(self._color).darker())
+        self._anim = qtanim.glow(self._frame, loop=-1, duration=300, radius=15, color=QColor(self._color).darker(10))
 
     def hideEvent(self, event: QHideEvent) -> None:
         if self._anim:

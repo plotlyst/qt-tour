@@ -23,21 +23,21 @@ class MainWindow(QMainWindow):
         self.widget.layout().addWidget(self._btn2)
         self.widget.layout().addWidget(self._btn3)
 
-        self._btn1.clicked.connect(lambda: self._btn3.setDisabled(True))
+        self._btn1.clicked.connect(lambda: print('btn 1'))
         self._btn2.clicked.connect(lambda: print('btn 2'))
         self._btn3.clicked.connect(self._startTour)
 
+        self._tour = TourManager.instance()
+        self._tour.tourFinished.connect(lambda: self._btn3.setEnabled(True))
+
     def _startTour(self):
-        tour = TourManager.instance()
         sequence = TourSequence()
         step1 = TourStep(self._btn1)
-        step3 = TourStep(self._btn3, delegateClick=False)
+        step3 = TourStep(self._btn3, delegateClick=False, message='Text bubble')
         step1.finished.connect(lambda: sequence.addStep(step3))
         sequence.addStep(step1)
-        sequence.addStep(TourStep(self._btn2, delegateClick=False))
-        tour.run(sequence)
-
-        tour.tourFinished.connect(lambda: self._btn3.setEnabled(True))
+        sequence.addStep(TourStep(self._btn2))
+        self._tour.run(sequence)
 
 
 if __name__ == '__main__':

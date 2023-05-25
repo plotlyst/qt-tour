@@ -3,7 +3,7 @@ from typing import Optional, List, Union
 
 import qtanim
 import qtawesome
-from qthandy import pointy, transparent, hbox, gc
+from qthandy import pointy, transparent, hbox, gc, ask_confirmation
 from qtpy.QtCore import QObject, QPoint, QEvent, Signal, Qt, QSize, QRect
 from qtpy.QtGui import QMouseEvent, QColor, QHideEvent, QKeyEvent, QPaintEvent, QPainter, QPolygon, QPen, QRegion
 from qtpy.QtWidgets import QWidget, QApplication, QAbstractButton, QToolButton, QFrame, QTextBrowser, QPushButton
@@ -66,6 +66,7 @@ class BubbleText(QFrame):
 
 class CoachmarkWidget(QWidget):
     clicked = Signal()
+    terminate = Signal()
 
     def __init__(self, step: 'TourStep', color: str = 'darkBlue'):
         super(CoachmarkWidget, self).__init__(step.widget())
@@ -118,8 +119,12 @@ class CoachmarkWidget(QWidget):
 
         self._anim = None
 
-    def keyPressEvent(self, a0: QKeyEvent) -> None:
-        pass
+    def keyPressEvent(self, event: QKeyEvent) -> None:
+        if event.key() == Qt.Key.Key_Escape:
+            if ask_confirmation('Terminate tour?', self):
+                self.terminate.emit()
+            else:
+                self.show()
 
     def mouseReleaseEvent(self, event: QMouseEvent) -> None:
         if self.frame.underMouse():
@@ -286,6 +291,7 @@ class TourManager(QObject):
         self._overlay.setMask(region)
 
         self._mark.clicked.connect(self._next)
+        self._mark.terminate.connect(self.finish)
         self._disabledEventFilter.setMark(self._mark)
         self._mark.show()
 

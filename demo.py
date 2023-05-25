@@ -33,7 +33,7 @@ class MainWindow(QMainWindow):
     def _startTour(self):
         sequence = TourSequence()
         step1 = TourStep(self._btn1)
-        step3 = TourStep(self._btn3, delegateClick=False, message='Text bubble')
+        step3 = TourStep(self._btn3, delegateClick=False, message='Text bubble', action='Finish')
         step1.finished.connect(lambda: sequence.addStep(step3))
         sequence.addStep(step1)
         sequence.addStep(TourStep(self._btn2))

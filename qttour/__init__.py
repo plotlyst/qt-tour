@@ -6,7 +6,7 @@ import qtawesome
 from qthandy import pointy, transparent, hbox, gc
 from qtpy.QtCore import QObject, QPoint, QEvent, Signal, Qt, QSize, QRect
 from qtpy.QtGui import QMouseEvent, QColor, QHideEvent, QKeyEvent, QPaintEvent, QPainter, QPolygon, QPen, QRegion
-from qtpy.QtWidgets import QWidget, QApplication, QAbstractButton, QToolButton, QFrame, QTextBrowser
+from qtpy.QtWidgets import QWidget, QApplication, QAbstractButton, QToolButton, QFrame, QTextBrowser, QPushButton
 
 
 def global_pos(widget: QWidget) -> QPoint:
@@ -44,7 +44,7 @@ class Arrow(QWidget):
 
 
 class BubbleText(QFrame):
-    def __init__(self, text: str, parent=None):
+    def __init__(self, text: str, action: str = '', parent=None):
         super(BubbleText, self).__init__(parent)
         self.setFrameShape(QFrame.Shape.StyledPanel)
 
@@ -52,7 +52,16 @@ class BubbleText(QFrame):
         transparent(self.text)
         self.text.setText(text)
 
+        self.btn = QPushButton()
+        pointy(self.btn)
+        self.btn.setProperty('coachmark-message-action', True)
+        if action:
+            self.btn.setText(action)
+        else:
+            self.btn.setHidden(True)
+
         hbox(self, 5, 0).addWidget(self.text)
+        self.layout().addWidget(self.btn, alignment=Qt.AlignmentFlag.AlignRight | Qt.AlignmentFlag.AlignBottom)
 
 
 class CoachmarkWidget(QWidget):
@@ -84,7 +93,7 @@ class CoachmarkWidget(QWidget):
         self.setFixedHeight(self.frame.height() + 200)
 
         if step.message():
-            self._bubble = BubbleText(step.message(), self)
+            self._bubble = BubbleText(step.message(), step.action(), self)
             self._bubble.setStyleSheet(f'''
                 QFrame {{
                         padding: 2px;
@@ -95,6 +104,7 @@ class CoachmarkWidget(QWidget):
                 ''')
             self._bubble.setFixedSize(200, 200)
             self._bubble.move(self.frame.rect().topRight() + QPoint(20, 0))
+            self._bubble.btn.clicked.connect(self._click)
 
             self._arrow = Arrow(self._color, self)
             self._arrow.setFixedSize(20, 25)
@@ -113,8 +123,7 @@ class CoachmarkWidget(QWidget):
 
     def mouseReleaseEvent(self, event: QMouseEvent) -> None:
         if self.frame.underMouse():
-            self.close()
-            self.clicked.emit()
+            self._click()
 
     def show(self) -> None:
         super(CoachmarkWidget, self).show()
@@ -123,6 +132,10 @@ class CoachmarkWidget(QWidget):
     def hideEvent(self, event: QHideEvent) -> None:
         if self._anim:
             self._anim.stop()
+
+    def _click(self):
+        self.close()
+        self.clicked.emit()
 
 
 class DisabledClickEventFilter(QObject):
@@ -155,11 +168,12 @@ class DisabledClickEventFilter(QObject):
 class TourStep(QObject):
     finished = Signal()
 
-    def __init__(self, widget: QWidget, message: str = '', delegateClick: bool = True):
+    def __init__(self, widget: QWidget, message: str = '', delegateClick: bool = True, action: str = ''):
         super(TourStep, self).__init__()
         self._widget = widget
         self._delegateClick = delegateClick
         self._message = message
+        self._action = action
 
     def widget(self) -> QWidget:
         return self._widget
@@ -169,6 +183,9 @@ class TourStep(QObject):
 
     def message(self) -> str:
         return self._message
+
+    def action(self) -> str:
+        return self._action
 
 
 class TourSequence(QObject):

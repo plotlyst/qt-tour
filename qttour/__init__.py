@@ -3,14 +3,24 @@ from typing import Optional, List, Union
 
 import qtanim
 import qtawesome
-from qthandy import pointy, transparent, hbox
-from qtpy.QtCore import QObject, QPoint, QEvent, Signal, Qt, QSize
-from qtpy.QtGui import QMouseEvent, QColor, QHideEvent, QKeyEvent, QPaintEvent, QPainter, QPolygon, QPen
+from qthandy import pointy, transparent, hbox, gc
+from qtpy.QtCore import QObject, QPoint, QEvent, Signal, Qt, QSize, QRect
+from qtpy.QtGui import QMouseEvent, QColor, QHideEvent, QKeyEvent, QPaintEvent, QPainter, QPolygon, QPen, QRegion
 from qtpy.QtWidgets import QWidget, QApplication, QAbstractButton, QToolButton, QFrame, QTextBrowser
 
 
 def global_pos(widget: QWidget) -> QPoint:
-    return widget.parent().mapToGlobal(widget.pos())
+    return widget.mapToGlobal(QPoint(0, 0))
+
+
+def global_rect(widget: QWidget) -> QRect:
+    return QRect(global_pos(widget), widget.rect().size())
+
+
+def map_from_global_rect(global_rect: QRect, widget: QWidget) -> QRect:
+    top_left = widget.mapFromGlobal(global_rect.topLeft())
+    local_rect = QRect(top_left, global_rect.size())
+    return local_rect
 
 
 class Arrow(QWidget):
@@ -89,7 +99,6 @@ class CoachmarkWidget(QWidget):
             self._arrow = Arrow(self._color, self)
             self._arrow.setFixedSize(20, 25)
             self._arrow.move(self.frame.rect().topRight() + QPoint(1, 10))
-
         else:
             self._cursor = QToolButton(self)
             transparent(self._cursor)
@@ -199,6 +208,7 @@ class TourManager(QObject):
         self._sequence: Optional[TourSequence] = None
         self._mark: Optional[CoachmarkWidget] = None
         self._currentStep: Optional[TourStep] = None
+        self._overlay: Optional[QWidget] = None
 
     @classmethod
     def instance(cls):
@@ -235,11 +245,28 @@ class TourManager(QObject):
         self._started = False
         self.tourFinished.emit()
 
+        if self._overlay:
+            self._overlay.setHidden(True)
+            gc(self._overlay)
+            self._overlay = None
+
     def _activate(self, step: TourStep):
         self._currentStep = step
         self._disabledEventFilter.setWidget(step.widget())
 
         self._mark = CoachmarkWidget(step, color=self._coachColor)
+
+        if self._overlay is None:
+            self._overlay = QWidget(step.widget().window())
+            self._overlay.setAttribute(Qt.WidgetAttribute.WA_TransparentForMouseEvents)
+            self._overlay.setStyleSheet("background-color: rgba(0, 0, 0, 100);")
+            self._overlay.setFixedSize(step.widget().window().size())
+            self._overlay.show()
+
+        region = QRegion(step.widget().window().rect())
+        target_rect = global_rect(step.widget())
+        region = region.subtracted(QRegion(map_from_global_rect(target_rect, self._overlay)))
+        self._overlay.setMask(region)
 
         self._mark.clicked.connect(self._next)
         self._disabledEventFilter.setMark(self._mark)

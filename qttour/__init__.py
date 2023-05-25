@@ -3,7 +3,7 @@ from typing import Optional, List, Union
 
 import qtanim
 import qtawesome
-from qthandy import pointy, transparent, hbox, gc, ask_confirmation
+from qthandy import pointy, transparent, gc, ask_confirmation, vbox
 from qtpy.QtCore import QObject, QPoint, QEvent, Signal, Qt, QSize, QRect
 from qtpy.QtGui import QMouseEvent, QColor, QHideEvent, QKeyEvent, QPaintEvent, QPainter, QPolygon, QPen, QRegion, \
     QCloseEvent
@@ -61,7 +61,7 @@ class BubbleText(QFrame):
         else:
             self.btn.setHidden(True)
 
-        hbox(self, 5, 0).addWidget(self.text)
+        vbox(self, 5, 0).addWidget(self.text)
         self.layout().addWidget(self.btn, alignment=Qt.AlignmentFlag.AlignRight | Qt.AlignmentFlag.AlignBottom)
 
 
@@ -139,7 +139,6 @@ class CoachmarkWidget(QWidget):
         self._closeAllowed = False
 
     def closeEvent(self, event: QCloseEvent) -> None:
-        print(event)
         if self._closeAllowed:
             event.accept()
         else:

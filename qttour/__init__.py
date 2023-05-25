@@ -280,7 +280,8 @@ class TourManager(QObject):
         self._currentStep.finished.emit()
 
         self._stepIndex += 1
-        if self._finishNext and self._stepIndex >= len(self._sequence.steps()):
-            self.finish()
+        if self._stepIndex >= len(self._sequence.steps()):
+            if self._finishNext:
+                self.finish()
         else:
             self._activate(self._sequence.steps()[self._stepIndex])

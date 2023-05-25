@@ -5,7 +5,8 @@ import qtanim
 import qtawesome
 from qthandy import pointy, transparent, hbox, gc, ask_confirmation
 from qtpy.QtCore import QObject, QPoint, QEvent, Signal, Qt, QSize, QRect
-from qtpy.QtGui import QMouseEvent, QColor, QHideEvent, QKeyEvent, QPaintEvent, QPainter, QPolygon, QPen, QRegion
+from qtpy.QtGui import QMouseEvent, QColor, QHideEvent, QKeyEvent, QPaintEvent, QPainter, QPolygon, QPen, QRegion, \
+    QCloseEvent
 from qtpy.QtWidgets import QWidget, QApplication, QAbstractButton, QToolButton, QFrame, QTextBrowser, QPushButton
 
 
@@ -73,6 +74,7 @@ class CoachmarkWidget(QWidget):
         self.setWindowFlags(Qt.WindowType.Popup | Qt.WindowType.FramelessWindowHint)
         self.setAttribute(Qt.WidgetAttribute.WA_TranslucentBackground)
         self._color = color
+        self._closeAllowed = False
 
         pos = global_pos(step.widget())
         padding = 10
@@ -121,6 +123,7 @@ class CoachmarkWidget(QWidget):
 
     def keyPressEvent(self, event: QKeyEvent) -> None:
         if event.key() == Qt.Key.Key_Escape:
+            self._closeAllowed = True
             if ask_confirmation('Terminate tour?', self):
                 self.terminate.emit()
             else:
@@ -133,12 +136,22 @@ class CoachmarkWidget(QWidget):
     def show(self) -> None:
         super(CoachmarkWidget, self).show()
         self._anim = qtanim.glow(self.frame, loop=-1, duration=300, radius=15, color=QColor(self._color).darker(10))
+        self._closeAllowed = False
+
+    def closeEvent(self, event: QCloseEvent) -> None:
+        print(event)
+        if self._closeAllowed:
+            event.accept()
+        else:
+            event.ignore()
 
     def hideEvent(self, event: QHideEvent) -> None:
         if self._anim:
             self._anim.stop()
 
     def _click(self):
+        self._closeAllowed = True
+
         self.close()
         self.clicked.emit()
 

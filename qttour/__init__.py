@@ -7,7 +7,8 @@ from qthandy import pointy, transparent, gc, ask_confirmation, vbox
 from qtpy.QtCore import QObject, QPoint, QEvent, Signal, Qt, QSize, QRect
 from qtpy.QtGui import QMouseEvent, QColor, QHideEvent, QKeyEvent, QPaintEvent, QPainter, QPolygon, QPen, QRegion, \
     QCloseEvent
-from qtpy.QtWidgets import QWidget, QApplication, QAbstractButton, QToolButton, QFrame, QTextBrowser, QPushButton
+from qtpy.QtWidgets import QWidget, QApplication, QAbstractButton, QToolButton, QFrame, QTextBrowser, QPushButton, \
+    QDialog
 
 
 def global_pos(widget: QWidget) -> QPoint:
@@ -75,13 +76,17 @@ class CoachmarkWidget(QWidget):
         self.setAttribute(Qt.WidgetAttribute.WA_TranslucentBackground)
         self._color = color
         self._closeAllowed = False
+        self._step = step
+        self._padding = 10
 
-        pos = global_pos(step.widget())
-        padding = 10
-        self.move(pos.x() - padding, pos.y() - padding)
+        self.updateGeometry()
+
+        if step.widget().parentWidget():
+            step.widget().parentWidget().installEventFilter(self)
 
         self.frame = QFrame(self)
-        self.frame.setFixedSize(QSize(step.widget().width() + padding * 2, step.widget().height() + padding * 2))
+        self.frame.setFixedSize(
+            QSize(step.widget().width() + self._padding * 2, step.widget().height() + self._padding * 2))
         pointy(self.frame)
         self.frame.setStyleSheet(f'''
             QFrame {{
@@ -121,6 +126,11 @@ class CoachmarkWidget(QWidget):
 
         self._anim = None
 
+    def eventFilter(self, watched: QObject, event: QEvent) -> bool:
+        if event.type() == QEvent.Type.Resize or event.type() == QEvent.Type.Move:
+            self.updateGeometry()
+        return super().eventFilter(watched, event)
+
     def keyPressEvent(self, event: QKeyEvent) -> None:
         if event.key() == Qt.Key.Key_Escape:
             self._closeAllowed = True
@@ -128,6 +138,10 @@ class CoachmarkWidget(QWidget):
                 self.terminate.emit()
             else:
                 self.show()
+
+    def updateGeometry(self):
+        pos = global_pos(self._step.widget())
+        self.move(pos.x() - self._padding, pos.y() - self._padding)
 
     def mouseReleaseEvent(self, event: QMouseEvent) -> None:
         if self.frame.underMouse():
@@ -185,12 +199,14 @@ class DisabledClickEventFilter(QObject):
 class TourStep(QObject):
     finished = Signal()
 
-    def __init__(self, widget: QWidget, message: str = '', delegateClick: bool = True, action: str = ''):
+    def __init__(self, widget: QWidget, message: str = '', delegateClick: bool = True, action: str = '',
+                 dialog: Optional[QDialog] = None):
         super(TourStep, self).__init__()
         self._widget = widget
         self._delegateClick = delegateClick
         self._message = message
         self._action = action
+        self._dialog = dialog
 
     def widget(self) -> QWidget:
         return self._widget
@@ -203,6 +219,9 @@ class TourStep(QObject):
 
     def action(self) -> str:
         return self._action
+
+    def dialog(self) -> QDialog:
+        return self._dialog
 
 
 class TourSequence(QObject):
@@ -297,10 +316,13 @@ class TourManager(QObject):
             self._overlay.setFixedSize(step.widget().window().size())
             self._overlay.show()
 
-        region = QRegion(step.widget().window().rect())
-        target_rect = global_rect(step.widget())
-        region = region.subtracted(QRegion(map_from_global_rect(target_rect, self._overlay)))
-        self._overlay.setMask(region)
+        if step.dialog():
+            self._overlay.clearMask()
+        else:
+            region = QRegion(step.widget().window().rect())
+            target_rect = global_rect(step.widget())
+            region = region.subtracted(QRegion(map_from_global_rect(target_rect, self._overlay)))
+            self._overlay.setMask(region)
 
         self._mark.clicked.connect(self._next)
         self._mark.terminate.connect(self.finish)

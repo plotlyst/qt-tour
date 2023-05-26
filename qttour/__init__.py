@@ -8,7 +8,7 @@ from qtpy.QtCore import QObject, QPoint, QEvent, Signal, Qt, QSize, QRect
 from qtpy.QtGui import QMouseEvent, QColor, QHideEvent, QKeyEvent, QPaintEvent, QPainter, QPolygon, QPen, QRegion, \
     QCloseEvent
 from qtpy.QtWidgets import QWidget, QAbstractButton, QToolButton, QFrame, QTextBrowser, QPushButton, \
-    QDialog
+    QDialog, QApplication
 
 
 def global_pos(widget: QWidget) -> QPoint:
@@ -111,12 +111,23 @@ class CoachmarkWidget(QWidget):
                     }}
                 ''')
             self._bubble.setFixedSize(200, 200)
-            self._bubble.move(self.frame.rect().topRight() + QPoint(20, 0))
-            self._bubble.btn.clicked.connect(self._click)
+            self._bubble.move(self.frame.rect().topRight())
+            pos = global_pos(self._bubble)
+            screen = QApplication.screenAt(pos)
+            if screen:
+                screen_rect = screen.availableGeometry()
+                w, h = self._bubble.width() + 20, self._bubble.height()
+                pos.setX(min(pos.x(), screen_rect.right() - w))
+                pos.setY(min(pos.y(), screen_rect.bottom() - h))
+                self._bubble.move(self.mapFromGlobal(pos) + QPoint(20, 0))
 
-            self._arrow = Arrow(self._color, self)
-            self._arrow.setFixedSize(20, 25)
-            self._arrow.move(self.frame.rect().topRight() + QPoint(1, 10))
+                self._arrow = Arrow(self._color, self)
+                self._arrow.setFixedSize(20, 25)
+                self._arrow.move(self.frame.rect().topRight() + QPoint(1, 10))
+            else:
+                self._bubble.move(self.frame.rect().topLeft())
+
+            self._bubble.btn.clicked.connect(self._click)
         else:
             self._cursor = QToolButton(self)
             transparent(self._cursor)

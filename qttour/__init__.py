@@ -7,7 +7,7 @@ from qthandy import pointy, transparent, gc, ask_confirmation, vbox
 from qtpy.QtCore import QObject, QPoint, QEvent, Signal, Qt, QSize, QRect
 from qtpy.QtGui import QMouseEvent, QColor, QHideEvent, QKeyEvent, QPaintEvent, QPainter, QPolygon, QPen, QRegion, \
     QCloseEvent
-from qtpy.QtWidgets import QWidget, QApplication, QAbstractButton, QToolButton, QFrame, QTextBrowser, QPushButton, \
+from qtpy.QtWidgets import QWidget, QAbstractButton, QToolButton, QFrame, QTextBrowser, QPushButton, \
     QDialog
 
 
@@ -254,7 +254,7 @@ class TourManager(QObject):
     def __init__(self):
         super(TourManager, self).__init__()
         self._coachColor: str = 'darkBlue'
-        self._disabledEventFilter = DisabledClickEventFilter()
+        # self._disabledEventFilter = DisabledClickEventFilter()
         self._stepIndex: int = 0
         self._started: bool = False
         self._finishNext: bool = False
@@ -278,7 +278,7 @@ class TourManager(QObject):
 
     def start(self):
         self._started = True
-        QApplication.instance().installEventFilter(self._disabledEventFilter)
+        # QApplication.instance().installEventFilter(self._disabledEventFilter)
         self.tourStarted.emit()
 
     def run(self, sequence: TourSequence, finishTour: bool = True):
@@ -293,7 +293,7 @@ class TourManager(QObject):
         self._activate(self._sequence.steps()[self._stepIndex])
 
     def finish(self):
-        QApplication.instance().removeEventFilter(self._disabledEventFilter)
+        # QApplication.instance().removeEventFilter(self._disabledEventFilter)
         self._mark = None
         self._started = False
         self.tourFinished.emit()
@@ -305,7 +305,7 @@ class TourManager(QObject):
 
     def _activate(self, step: TourStep):
         self._currentStep = step
-        self._disabledEventFilter.setWidget(step.widget())
+        # self._disabledEventFilter.setWidget(step.widget())
 
         self._mark = CoachmarkWidget(step, color=self._coachColor)
 
@@ -326,7 +326,7 @@ class TourManager(QObject):
 
         self._mark.clicked.connect(self._next)
         self._mark.terminate.connect(self.finish)
-        self._disabledEventFilter.setMark(self._mark)
+        # self._disabledEventFilter.setMark(self._mark)
         self._mark.show()
 
     def _next(self):

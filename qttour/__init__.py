@@ -100,6 +100,9 @@ class CoachmarkWidget(QWidget):
         self.setFixedWidth(self.frame.width() + 220)
         self.setFixedHeight(self.frame.height() + 200)
 
+        if step.widget().windowFlags() & Qt.WindowType.Popup:
+            self.frame.setHidden(True)
+
         if step.message():
             self._bubble = BubbleText(step.message(), step.action(), self)
             self._bubble.setStyleSheet(f'''
@@ -328,6 +331,8 @@ class TourManager(QObject):
             self._overlay.show()
 
         if step.dialog():
+            self._overlay.clearMask()
+        elif step.widget().windowFlags() & Qt.WindowType.Popup:
             self._overlay.clearMask()
         else:
             region = QRegion(step.widget().window().rect())

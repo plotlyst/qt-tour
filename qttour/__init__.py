@@ -39,7 +39,7 @@ class Arrow(QWidget):
 
         top_point = self.rect().topRight()
         bottom_point = self.rect().bottomRight()
-        left_point = QPoint(self._penWidth, self.height() / 2)
+        left_point = QPoint(self._penWidth, self.height() // 2)
 
         arrow_polygon = QPolygon([top_point, bottom_point, left_point])
         painter.drawPolygon(arrow_polygon)
